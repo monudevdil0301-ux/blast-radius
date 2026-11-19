@@ -1,8 +1,11 @@
 # BlastRadius: Architectural Impact & Dependency Radar
 
 **Built for Codegeist 2026**  
-*Category:* **Apps for Software Teams**  
-*Bonus Tracks Targeted:* **Best Atlassian MCP App ($1,500)**, **Best Agents (Rovo) ($1,500)**, **Best Teamwork Graph Integration ($1,500)**
+*Category:* **Apps for Software Teams** ($15,000)  
+*Bonus Tracks Targeted:* **Best Atlassian MCP App ($1,500)**, **Best Agents (Rovo) ($1,500)**, **Best Teamwork Graph Integration ($1,500)**  
+*Live Vercel Interactive Preview:* [https://frontend-sandy-mu-63.vercel.app](https://frontend-sandy-mu-63.vercel.app)  
+*Atlassian Cloud Site:* [https://monudevdil0301.atlassian.net](https://monudevdil0301.atlassian.net)  
+*GitHub Repo:* [https://github.com/monudevdil0301-ux/blast-radius](https://github.com/monudevdil0301-ux/blast-radius)
 
 ---
 

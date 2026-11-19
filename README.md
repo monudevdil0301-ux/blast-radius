@@ -1,8 +1,12 @@
 # 💥 BlastRadius: Architectural Impact & Dependency Radar
 
 > **Codegeist 2026 Submission**  
-> *Category:* **Apps for Software Teams**  
+> *Category:* **Apps for Software Teams** ($15,000)  
 > *Bonus Tracks:* **Best Atlassian MCP App**, **Best Agents (Rovo)** & **Best Teamwork Graph Integration**
+
+- 🚀 **Live Interactive Demo (Vercel):** [https://frontend-sandy-mu-63.vercel.app](https://frontend-sandy-mu-63.vercel.app)
+- 🏢 **Atlassian Cloud Site (Jira):** [https://monudevdil0301.atlassian.net](https://monudevdil0301.atlassian.net)
+- 📦 **GitHub Repository:** [https://github.com/monudevdil0301-ux/blast-radius](https://github.com/monudevdil0301-ux/blast-radius)
 
 BlastRadius is an AI-powered architectural impact sentry built natively on **Atlassian Forge**. It automatically analyzes microservice dependencies across the **Teamwork Graph** and **Compass**, computes real-time blast radius risk scores on Jira tickets, simulates cascading shockwaves, scans Git code diffs for breaking API signatures, provides Change Advisory Board (CAB) pre-flight clearance seals, and uses an autonomous **Rovo Agent** & **Atlassian MCP Server** to generate regression suites and Confluence rollback runbooks.
 
