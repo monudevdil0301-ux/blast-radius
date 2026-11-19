@@ -1,0 +1,107 @@
+modules:
+  jira:issuePanel:
+    - key: blastradius-panel
+      title: 'BlastRadius: Impact & Dependency Radar'
+      icon: https://raw.githubusercontent.com/atlassian/forge-ui/master/packages/components/icons/error.svg
+      resource: blastradius-frontend
+      resolver:
+        function: blastradius-resolver
+      viewportSize: large
+
+  rovo:agent:
+    - key: blastradius-agent
+      name: 'BlastRadius Sentry'
+      description: 'Autonomous architectural safety agent that calculates microservice blast radius, audits downstream incident risk, generates regression test suites in Jira, and drafts rollback playbooks in Confluence.'
+      conversationStarters:
+        - 'What is the blast radius of this ticket?'
+        - 'Generate downstream regression tests for affected services'
+        - 'Draft a Confluence rollback runbook for this deployment'
+      systemPrompt: |
+        You are BlastRadius Sentry, an elite autonomous DevOps & Architectural Safety Agent integrated into Atlassian Jira, Bitbucket, Confluence, and Compass.
+        Your mission is to prevent catastrophic production incidents by analyzing the blast radius of code changes and Jira issues before they deploy.
+        When asked to analyze blast radius:
+        1. Examine the root microservice, its upstream callers, and downstream dependencies using the Teamwork Graph and Compass catalog.
+        2. Inspect recent incident histories (P1/P2 tickets) on downstream consumers.
+        3. Identify any stale Confluence architectural decision records (ADRs) or missing runbooks.
+        4. Suggest or execute concrete remediation actions: generating Jira regression test sub-tasks, alerting service owners, or drafting Confluence rollback procedures.
+      actions:
+        - analyze-blast-radius
+        - generate-regression-tests
+        - draft-rollback-runbook
+
+  rovo:action:
+    - key: analyze-blast-radius
+      function: rovo-action-handler
+      action:
+        name: analyze_blast_radius
+        description: 'Analyzes the full downstream microservice blast radius and calculates a risk score (0-100) based on incident history and cyclomatic dependencies.'
+        parameters:
+          type: object
+          properties:
+            issueKey:
+              type: string
+              description: 'The Jira issue key (e.g. PROJ-104).'
+            serviceKey:
+              type: string
+              description: 'Optional Compass component or microservice ID.'
+          required:
+            - issueKey
+
+    - key: generate-regression-tests
+      function: rovo-action-handler
+      action:
+        name: generate_regression_tests
+        description: 'Creates linked regression test sub-tasks in Jira for all impacted downstream microservices.'
+        parameters:
+          type: object
+          properties:
+            issueKey:
+              type: string
+              description: 'The parent Jira issue key.'
+            services:
+              type: array
+              items:
+                type: string
+              description: 'List of downstream services requiring regression validation.'
+          required:
+            - issueKey
+            - services
+
+    - key: draft-rollback-runbook
+      function: rovo-action-handler
+      action:
+        name: draft_rollback_runbook
+        description: 'Drafts a comprehensive incident rollback playbook in Confluence with verified health-check endpoints and owner escalation chains.'
+        parameters:
+          type: object
+          properties:
+            issueKey:
+              type: string
+              description: 'The Jira issue key.'
+            spaceKey:
+              type: string
+              description: 'Target Confluence space key.'
+          required:
+            - issueKey
+
+  function:
+    - key: blastradius-resolver
+      handler: index.handler
+    - key: rovo-action-handler
+      handler: rovo.actionHandler
+
+resources:
+  - key: blastradius-frontend
+    path: static/frontend/dist
+
+permissions:
+  scopes:
+    - read:jira-work
+    - write:jira-work
+    - read:confluence-content
+    - write:confluence-content
+    - read:compass:component
+    - storage:app
+
+app:
+  id: ari:cloud:ecosystem::app/00000000-0000-0000-0000-000000000000

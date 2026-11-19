@@ -1,0 +1,19 @@
+{
+  "name": "blastradius-forge-app",
+  "version": "1.0.0",
+  "description": "BlastRadius: Architectural Impact & Dependency Radar for Codegeist 2026",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "build:all": "cd static/frontend && npm run build && cd ../.. && npm run build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@forge/api": "^5.1.0",
+    "@forge/resolver": "^1.6.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "@types/node": "^20.12.7"
+  }
+}
