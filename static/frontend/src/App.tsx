@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Flame, ShieldAlert, Activity, Bot, RefreshCw, Layers, CheckCircle2, ChevronRight, Terminal, Info, GitPullRequest, ShieldCheck, FileDown } from 'lucide-react';
+import {
+  Flame, ShieldAlert, Activity, Bot, RefreshCw, Layers,
+  CheckCircle2, Terminal, Info, GitPullRequest, ShieldCheck,
+  FileDown, Zap, Cpu
+} from 'lucide-react';
 import { fetchBlastRadiusData } from './bridge';
 import { BlastRadiusAnalysis, ServiceDependency } from './types';
 import { RiskGauge } from './components/RiskGauge';
@@ -11,14 +15,26 @@ import { CodeDiffScanner } from './components/CodeDiffScanner';
 import { PreFlightGatePanel } from './components/PreFlightGate';
 import { ExecutiveReportModal } from './components/ExecutiveReportModal';
 
+type TabId = 'graph' | 'diff' | 'preflight' | 'chaos' | 'rovo' | 'audit';
+
+const TABS: { id: TabId; label: string; icon: React.ReactNode; color: string }[] = [
+  { id: 'graph',    label: 'Radar',           icon: <Layers className="w-3.5 h-3.5" />,     color: 'text-blue-400' },
+  { id: 'diff',     label: 'Diff Scanner',    icon: <GitPullRequest className="w-3.5 h-3.5" />, color: 'text-indigo-400' },
+  { id: 'preflight',label: 'Pre-Flight CAB',  icon: <ShieldCheck className="w-3.5 h-3.5" />, color: 'text-emerald-400' },
+  { id: 'chaos',    label: 'Chaos Sim',       icon: <Activity className="w-3.5 h-3.5" />,   color: 'text-rose-400' },
+  { id: 'rovo',     label: 'Rovo Sentry',     icon: <Bot className="w-3.5 h-3.5" />,        color: 'text-purple-400' },
+  { id: 'audit',    label: 'Risk Factors',    icon: <ShieldAlert className="w-3.5 h-3.5" />, color: 'text-amber-400' },
+];
+
 export function App() {
   const [currentIssue, setCurrentIssue] = useState<string>('AUTH-412');
   const [analysis, setAnalysis] = useState<BlastRadiusAnalysis | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<'graph' | 'diff' | 'preflight' | 'chaos' | 'rovo' | 'audit'>('graph');
+  const [activeTab, setActiveTab] = useState<TabId>('graph');
   const [selectedService, setSelectedService] = useState<ServiceDependency | null>(null);
   const [simTarget, setSimTarget] = useState<string>('auth-service');
   const [showExecutiveModal, setShowExecutiveModal] = useState<boolean>(false);
+  const [liveTime, setLiveTime] = useState(new Date());
 
   const loadData = async (issueKey: string) => {
     setLoading(true);
@@ -32,166 +48,186 @@ export function App() {
     }
   };
 
+  useEffect(() => { loadData(currentIssue); }, [currentIssue]);
   useEffect(() => {
-    loadData(currentIssue);
-  }, [currentIssue]);
+    const t = setInterval(() => setLiveTime(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   const handleSimulateNode = (serviceId: string) => {
     setSimTarget(serviceId);
     setActiveTab('chaos');
   };
 
+  /* ── LOADING SCREEN ─────────────────────────── */
   if (loading || !analysis) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-slate-600">
-        <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mb-3" />
-        <h3 className="font-semibold text-slate-800 text-sm">Querying Teamwork Graph & Compass Catalog...</h3>
-        <p className="text-xs text-slate-400 mt-1">Analyzing cyclomatic service dependencies for {currentIssue}</p>
+      <div className="min-h-screen grid-bg flex flex-col items-center justify-center p-6" style={{ background: 'var(--bg-base)' }}>
+        <div className="relative mb-6">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center animate-glow-pulse"
+            style={{ background: 'linear-gradient(135deg,#ef4444,#f59e0b)', boxShadow: '0 0 40px rgba(239,68,68,0.5)' }}>
+            <Flame className="w-8 h-8 text-white animate-float" />
+          </div>
+        </div>
+        <h3 className="font-bold text-lg mb-1" style={{ color: 'var(--text-primary)' }}>
+          BlastRadius Radar
+        </h3>
+        <div className="flex items-center gap-2 mt-3" style={{ color: 'var(--text-secondary)' }}>
+          <RefreshCw className="w-4 h-4 animate-spin" style={{ color: 'var(--accent-blue)' }} />
+          <span className="text-sm font-mono">Querying Teamwork Graph & Compass Catalog...</span>
+        </div>
+        <p className="text-xs mt-1 font-mono" style={{ color: 'var(--text-muted)' }}>
+          Analyzing cyclomatic dependencies for {currentIssue}
+        </p>
       </div>
     );
   }
 
+  const riskColor = analysis.riskTier === 'CRITICAL' ? 'var(--accent-red)' :
+                    analysis.riskTier === 'HIGH'     ? 'var(--accent-amber)' : 'var(--accent-green)';
+
   return (
-    <div className="min-h-screen bg-[#FAFBFC] text-[#172B4D]">
-      {/* Top Navigation & Context Banner */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-4">
-          
-          {/* Logo & Title */}
+    <div className="min-h-screen grid-bg" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
+
+      {/* ── HEADER ────────────────────────────────────── */}
+      <header className="sticky top-0 z-30" style={{
+        background: 'rgba(8,12,20,0.85)',
+        borderBottom: '1px solid var(--border-subtle)',
+        backdropFilter: 'blur(20px)',
+      }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+
+          {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-rose-500 via-red-600 to-amber-600 flex items-center justify-center text-white shadow-sm">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white animate-glow-pulse"
+              style={{ background: 'linear-gradient(135deg,#ef4444,#f59e0b)', boxShadow: '0 0 20px rgba(239,68,68,0.4)' }}>
               <Flame className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-bold text-slate-900 text-base tracking-tight">BlastRadius</h1>
-                <span className="text-[10px] font-extrabold uppercase bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full border border-rose-200">
+                <h1 className="font-black text-base tracking-tight text-glow-blue" style={{ color: 'var(--text-primary)' }}>
+                  BlastRadius
+                </h1>
+                <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full badge-critical">
                   Codegeist 2026
                 </span>
-                <span className="text-[10px] font-mono bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-bold">
-                  MCP Ready
+                <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full badge-info font-mono">
+                  MCP ✓
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 font-medium">Architectural Impact & Dependency Radar</p>
-            </div>
-          </div>
-
-          {/* Active Jira Issue Selector (Demo Mode) */}
-          <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
-            <span className="text-[11px] font-semibold text-slate-500 pl-2">Issue:</span>
-            <select
-              value={currentIssue}
-              onChange={(e) => setCurrentIssue(e.target.value)}
-              className="text-xs font-mono font-bold bg-white border border-slate-300 rounded px-2.5 py-1 text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="AUTH-412">AUTH-412: Refactor Token Validation (Critical)</option>
-              <option value="PAY-892">PAY-892: Stripe Webhook v3 Upgrade (Elevated)</option>
-            </select>
-            <button
-              onClick={() => loadData(currentIssue)}
-              title="Refresh Graph"
-              className="p-1 hover:bg-slate-200 rounded text-slate-600 transition"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => setShowExecutiveModal(true)}
-              className="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs flex items-center gap-1 transition shadow-xs"
-            >
-              <FileDown className="w-3.5 h-3.5" /> Export Audit
-            </button>
-          </div>
-
-          {/* Tab Navigation */}
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg text-xs font-medium overflow-x-auto">
-            <button
-              onClick={() => setActiveTab('graph')}
-              className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
-                activeTab === 'graph' ? 'bg-white text-blue-700 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5" /> Radar
-            </button>
-            <button
-              onClick={() => setActiveTab('diff')}
-              className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
-                activeTab === 'diff' ? 'bg-white text-indigo-700 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <GitPullRequest className="w-3.5 h-3.5" /> Diff Scanner
-            </button>
-            <button
-              onClick={() => setActiveTab('preflight')}
-              className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
-                activeTab === 'preflight' ? 'bg-white text-emerald-700 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <ShieldCheck className="w-3.5 h-3.5" /> Pre-Flight CAB
-            </button>
-            <button
-              onClick={() => setActiveTab('chaos')}
-              className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
-                activeTab === 'chaos' ? 'bg-white text-rose-700 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Activity className="w-3.5 h-3.5" /> Chaos Simulator
-            </button>
-            <button
-              onClick={() => setActiveTab('rovo')}
-              className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
-                activeTab === 'rovo' ? 'bg-white text-purple-700 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Bot className="w-3.5 h-3.5" /> Rovo Sentry
-            </button>
-            <button
-              onClick={() => setActiveTab('audit')}
-              className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
-                activeTab === 'audit' ? 'bg-white text-slate-900 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <ShieldAlert className="w-3.5 h-3.5" /> Risk Factors ({analysis.riskFactors.length})
-            </button>
-          </div>
-
-        </div>
-      </header>
-
-      {/* Main Content Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-
-        {/* Issue Banner Summary */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span className="font-mono font-bold bg-blue-100 text-blue-800 text-xs px-2.5 py-1 rounded border border-blue-200">
-              {analysis.issueKey}
-            </span>
-            <div>
-              <h2 className="text-sm font-bold text-slate-900">{analysis.issueSummary}</h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Target Component: <span className="font-mono font-medium text-slate-700">{analysis.rootService.name}</span> &bull; Owner: <span className="text-slate-700">{analysis.rootService.ownerTeam}</span>
+              <p className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
+                Architectural Impact & Dependency Radar
               </p>
             </div>
           </div>
 
+          {/* Live Clock + Issue Selector */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500">Blast Radius Assessment:</span>
-            <span className={`text-xs font-bold font-mono px-2.5 py-1 rounded-md ${
-              analysis.riskTier === 'CRITICAL' ? 'bg-red-100 text-red-700 border border-red-200' :
-              analysis.riskTier === 'HIGH' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
-              'bg-emerald-100 text-emerald-800 border border-emerald-200'
-            }`}>
-              {analysis.riskTier} RISK &bull; {analysis.riskScore}/100
-            </span>
+            {/* Live indicator */}
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style={{ border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-[10px] font-mono font-bold" style={{ color: '#34d399' }}>LIVE</span>
+              <span className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
+                {liveTime.toLocaleTimeString('en-US', { hour12: false })}
+              </span>
+            </div>
+
+            {/* Issue Selector */}
+            <div className="flex items-center gap-1.5 px-1.5 py-1 rounded-lg" style={{ border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
+              <span className="text-[10px] font-mono pl-1" style={{ color: 'var(--text-muted)' }}>Issue</span>
+              <select
+                value={currentIssue}
+                onChange={(e) => setCurrentIssue(e.target.value)}
+                className="dark-input text-[11px] font-mono font-bold rounded px-2 py-0.5"
+                style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}
+              >
+                <option value="AUTH-412">AUTH-412 · Token Validation · CRITICAL</option>
+                <option value="PAY-892">PAY-892 · Stripe Webhook v3 · HIGH</option>
+              </select>
+              <button
+                onClick={() => loadData(currentIssue)}
+                title="Refresh"
+                className="p-1 rounded btn-ghost"
+              >
+                <RefreshCw className="w-3 h-3" />
+              </button>
+            </div>
+
+            {/* Export */}
+            <button
+              onClick={() => setShowExecutiveModal(true)}
+              className="btn-primary px-3 py-1.5 rounded-lg text-[11px] flex items-center gap-1.5"
+            >
+              <FileDown className="w-3.5 h-3.5" /> Audit Report
+            </button>
           </div>
+
         </div>
 
-        {/* Hero Risk Gauge & Stats */}
+        {/* Tab Bar */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-0 flex items-center gap-1 overflow-x-auto"
+          style={{ borderTop: '1px solid var(--border-subtle)' }}>
+          {TABS.map(tab => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`relative px-4 py-2.5 text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
+                  isActive ? `${tab.color} tab-active-indicator` : 'hover:opacity-80'
+                }`}
+                style={{ color: isActive ? undefined : 'var(--text-muted)' }}
+              >
+                {tab.icon}
+                {tab.label}
+                {tab.id === 'audit' && (
+                  <span className="ml-0.5 text-[9px] badge-high px-1.5 py-0.5 rounded-full font-mono">
+                    {analysis.riskFactors.length}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </header>
+
+      {/* ── ISSUE CONTEXT BANNER ────────────────────── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5">
+        <div className="glass-card-elevated p-4 flex flex-wrap items-center justify-between gap-4 animate-slide-up">
+          <div className="flex items-center gap-3">
+            <span className="font-mono font-bold text-xs px-2.5 py-1 rounded badge-info">
+              {analysis.issueKey}
+            </span>
+            <div>
+              <h2 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{analysis.issueSummary}</h2>
+              <p className="text-[11px] font-mono mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                Root: <span style={{ color: 'var(--accent-blue)' }}>{analysis.rootService.name}</span>
+                {' · '}Owner: <span style={{ color: 'var(--text-secondary)' }}>{analysis.rootService.ownerTeam}</span>
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-[10px] font-mono uppercase" style={{ color: 'var(--text-muted)' }}>Blast Assessment</div>
+              <div className="font-black font-mono text-sm" style={{ color: riskColor, textShadow: `0 0 12px ${riskColor}` }}>
+                {analysis.riskTier} · {analysis.riskScore}/100
+              </div>
+            </div>
+            <div className="w-px h-8" style={{ background: 'var(--border-subtle)' }} />
+            <Cpu className="w-5 h-5" style={{ color: riskColor, opacity: 0.8 }} />
+          </div>
+        </div>
+      </div>
+
+      {/* ── MAIN CONTENT ─────────────────────────────── */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-5 space-y-5">
+
+        {/* Risk Gauge always visible */}
         <RiskGauge analysis={analysis} />
 
         {/* Dynamic Tab Views */}
         {activeTab === 'graph' && (
-          <div className="space-y-6">
+          <div className="space-y-5 animate-slide-up">
             <BlastRadiusCanvas
               analysis={analysis}
               onSelectService={setSelectedService}
@@ -203,26 +239,26 @@ export function App() {
         )}
 
         {activeTab === 'diff' && (
-          <div className="space-y-6">
+          <div className="animate-slide-up">
             <CodeDiffScanner issueKey={analysis.issueKey} />
           </div>
         )}
 
         {activeTab === 'preflight' && (
-          <div className="space-y-6">
+          <div className="animate-slide-up">
             <PreFlightGatePanel issueKey={analysis.issueKey} riskScore={analysis.riskScore} />
           </div>
         )}
 
         {activeTab === 'chaos' && (
-          <div className="space-y-6">
+          <div className="space-y-5 animate-slide-up">
             <FailureSimulator initialServiceId={simTarget} />
             <ActionConsole analysis={analysis} />
           </div>
         )}
 
         {activeTab === 'rovo' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 animate-slide-up">
             <div className="lg:col-span-2">
               <RovoChatDrawer
                 analysis={analysis}
@@ -231,85 +267,98 @@ export function App() {
               />
             </div>
             <div className="space-y-4">
-              <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase mb-2">
-                  <Terminal className="w-4 h-4 text-blue-600" /> Rovo & MCP Protocol Manifest
+              <div className="glass-card p-4">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase mb-3" style={{ color: 'var(--accent-blue)' }}>
+                  <Terminal className="w-4 h-4" /> MCP Tool Manifest
                 </div>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  BlastRadius Sentry is registered both as an assignable <code>rovo:agent</code> and an <strong>Atlassian Model Context Protocol (MCP)</strong> server:
-                </p>
-                <ul className="mt-2.5 space-y-2 text-xs font-mono text-slate-700">
-                  <li className="bg-slate-50 p-2 rounded border border-slate-100">
-                    <strong className="text-blue-700">blastradius_inspect_dependencies</strong>
-                    <div className="text-[11px] text-slate-500">MCP tool for multi-tier Graph inspection</div>
-                  </li>
-                  <li className="bg-slate-50 p-2 rounded border border-slate-100">
-                    <strong className="text-blue-700">blastradius_simulate_failure</strong>
-                    <div className="text-[11px] text-slate-500">MCP tool for synthetic cascade modeling</div>
-                  </li>
-                  <li className="bg-slate-50 p-2 rounded border border-slate-100">
-                    <strong className="text-blue-700">blastradius_verify_preflight_clearance</strong>
-                    <div className="text-[11px] text-slate-500">MCP tool for automated CAB clearance seals</div>
-                  </li>
-                </ul>
+                <div className="space-y-2">
+                  {[
+                    { name: 'blastradius_inspect_dependencies', desc: 'Multi-tier Teamwork Graph inspection' },
+                    { name: 'blastradius_simulate_failure', desc: 'Synthetic cascade failure modeling' },
+                    { name: 'blastradius_verify_preflight_clearance', desc: 'Automated CAB clearance seals' },
+                  ].map((tool) => (
+                    <div key={tool.name} className="p-2.5 rounded-lg" style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)' }}>
+                      <div className="text-[11px] font-mono font-bold" style={{ color: 'var(--accent-cyan)' }}>{tool.name}</div>
+                      <div className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{tool.desc}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs text-blue-900">
-                <div className="flex items-center gap-2 font-bold mb-1">
-                  <Info className="w-4 h-4 text-blue-700" />
-                  Codegeist Bonus Tracks Covered
+              <div className="glass-card p-4" style={{ borderColor: 'rgba(139,92,246,0.3)' }}>
+                <div className="flex items-center gap-2 font-bold text-xs mb-2" style={{ color: 'var(--accent-purple)' }}>
+                  <Zap className="w-4 h-4" /> Codegeist Bonus Tracks
                 </div>
-                <p className="leading-relaxed">
-                  Qualifies for <strong>Best Agents</strong> ($1,500), <strong>Best Atlassian MCP App</strong> ($1,500), and <strong>Best Teamwork Graph Integration</strong> ($1,500) simultaneously!
-                </p>
+                <div className="space-y-1.5 text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+                  {['Best Agents ($1,500)', 'Best Atlassian MCP App ($1,500)', 'Best Teamwork Graph Integration ($1,500)'].map(t => (
+                    <div key={t} className="flex items-center gap-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--accent-green)' }} />
+                      <span>{t}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="glass-card p-4">
+                <div className="flex items-center gap-2 font-bold text-xs mb-2" style={{ color: 'var(--accent-amber)' }}>
+                  <Info className="w-4 h-4" /> Registered as
+                </div>
+                <div className="space-y-1 font-mono text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+                  <div>· <span style={{ color: 'var(--accent-blue)' }}>rovo:agent</span> → BlastRadius Sentry</div>
+                  <div>· <span style={{ color: 'var(--accent-cyan)' }}>mcp:server</span> → Forge MCP Handler</div>
+                  <div>· <span style={{ color: 'var(--accent-green)' }}>jira:globalPage</span> → BlastRadius Radar</div>
+                </div>
               </div>
             </div>
           </div>
         )}
 
         {activeTab === 'audit' && (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-6">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-bold text-slate-900 text-sm">Detailed Risk Factor Breakdown</h3>
+          <div className="glass-card p-6 space-y-6 animate-slide-up">
+            <div className="flex items-center justify-between pb-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+              <h3 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Detailed Risk Factor Breakdown</h3>
               <button
                 onClick={() => setShowExecutiveModal(true)}
-                className="px-3 py-1 bg-slate-800 hover:bg-slate-900 text-white font-medium text-xs rounded transition flex items-center gap-1.5"
+                className="btn-ghost px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5"
               >
-                <FileDown className="w-3.5 h-3.5" /> Open Executive Briefing
+                <FileDown className="w-3.5 h-3.5" /> Executive Briefing
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               {analysis.riskFactors.map((factor, idx) => (
                 <div
                   key={idx}
-                  className={`p-4 rounded-xl border ${
-                    factor.severity === 'critical' ? 'bg-red-50/50 border-red-200' :
-                    factor.severity === 'high' ? 'bg-amber-50/50 border-amber-200' :
-                    'bg-slate-50 border-slate-200'
-                  }`}
+                  className="p-4 rounded-xl transition-all"
+                  style={{
+                    background: factor.severity === 'critical' ? 'rgba(239,68,68,0.06)' :
+                                factor.severity === 'high'     ? 'rgba(245,158,11,0.06)' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${
+                      factor.severity === 'critical' ? 'rgba(239,68,68,0.3)' :
+                      factor.severity === 'high'     ? 'rgba(245,158,11,0.3)' : 'var(--border-subtle)'
+                    }`
+                  }}
                 >
                   <div className="flex items-center justify-between mb-1.5">
-                    <h4 className="font-bold text-slate-800 text-sm">{factor.title}</h4>
-                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
-                      factor.severity === 'critical' ? 'bg-red-100 text-red-700' :
-                      factor.severity === 'high' ? 'bg-amber-100 text-amber-800' :
-                      'bg-slate-200 text-slate-700'
+                    <h4 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{factor.title}</h4>
+                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${
+                      factor.severity === 'critical' ? 'badge-critical' :
+                      factor.severity === 'high'     ? 'badge-high' : 'badge-info'
                     }`}>
                       {factor.severity}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-600 leading-relaxed">{factor.description}</p>
+                  <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{factor.description}</p>
                 </div>
               ))}
             </div>
 
-            <div className="pt-4 border-t border-slate-100">
-              <h4 className="font-bold text-slate-800 text-xs uppercase mb-2">Automated Policy Recommendations</h4>
-              <ul className="space-y-1.5 text-xs text-slate-700">
+            <div className="pt-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+              <h4 className="font-bold text-xs uppercase mb-3" style={{ color: 'var(--accent-blue)' }}>Automated Policy Recommendations</h4>
+              <ul className="space-y-2">
                 {analysis.recommendedActions.map((rec, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <li key={i} className="flex items-start gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" style={{ color: 'var(--accent-green)' }} />
                     <span>{rec}</span>
                   </li>
                 ))}

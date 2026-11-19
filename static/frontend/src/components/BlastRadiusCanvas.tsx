@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Server, Database, Radio, Globe, Layers, AlertCircle, Shield, ExternalLink, Zap, ZoomIn, ZoomOut, RotateCcw, Activity } from 'lucide-react';
 import { ServiceDependency, BlastRadiusAnalysis } from '../types';
 
@@ -18,7 +18,7 @@ export const BlastRadiusCanvas: React.FC<BlastRadiusCanvasProps> = ({
   const [filter, setFilter] = useState<'all' | 'incident-prone' | 'at-risk'>('all');
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [shockwaveActive, setShockwaveActive] = useState<boolean>(false);
-  const [shockwaveStage, setShockwaveStage] = useState<number>(0); // 0: None, 1: Tier 0, 2: Tier 1, 3: Tier 2
+  const [shockwaveStage, setShockwaveStage] = useState<number>(0);
 
   const root = analysis.rootService;
   const tier1 = analysis.impactedServices.filter(s => s.tier === 1);
@@ -26,23 +26,42 @@ export const BlastRadiusCanvas: React.FC<BlastRadiusCanvasProps> = ({
 
   const getServiceIcon = (type: ServiceDependency['type']) => {
     switch (type) {
-      case 'database': return <Database className="w-4 h-4 text-purple-600" />;
-      case 'gateway': return <Globe className="w-4 h-4 text-sky-600" />;
-      case 'message-broker': return <Radio className="w-4 h-4 text-emerald-600" />;
-      case 'third-party': return <Layers className="w-4 h-4 text-amber-600" />;
-      default: return <Server className="w-4 h-4 text-blue-600" />;
+      case 'database':      return <Database className="w-4 h-4" style={{ color: 'var(--accent-purple)' }} />;
+      case 'gateway':       return <Globe className="w-4 h-4" style={{ color: 'var(--accent-cyan)' }} />;
+      case 'message-broker':return <Radio className="w-4 h-4" style={{ color: 'var(--accent-green)' }} />;
+      case 'third-party':   return <Layers className="w-4 h-4" style={{ color: 'var(--accent-amber)' }} />;
+      default:              return <Server className="w-4 h-4" style={{ color: 'var(--accent-blue)' }} />;
     }
   };
 
   const getStatusBadge = (status: ServiceDependency['status']) => {
     switch (status) {
       case 'incident-prone':
-        return <span className="bg-rose-100 text-rose-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-rose-200">Incident Prone</span>;
+        return <span className="badge-critical text-[9px] font-black px-1.5 py-0.5 rounded">P1 Hotspot</span>;
       case 'at-risk':
-        return <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-200">At Risk</span>;
+        return <span className="badge-high text-[9px] font-black px-1.5 py-0.5 rounded">At Risk</span>;
       default:
-        return <span className="bg-emerald-100 text-emerald-800 text-[10px] font-medium px-1.5 py-0.5 rounded">Healthy</span>;
+        return <span className="badge-safe text-[9px] font-bold px-1.5 py-0.5 rounded">Healthy</span>;
     }
+  };
+
+  const getNodeBorderStyle = (svc: ServiceDependency, shockStage: number, minStage: number, isSelected: boolean) => {
+    if (shockStage >= minStage && svc.status === 'incident-prone') {
+      return { border: '2px solid #ef4444', boxShadow: '0 0 24px rgba(239,68,68,0.6)', background: 'rgba(239,68,68,0.08)' };
+    }
+    if (shockStage >= minStage) {
+      return { border: '2px solid #f59e0b', boxShadow: '0 0 16px rgba(245,158,11,0.4)', background: 'rgba(245,158,11,0.06)' };
+    }
+    if (isSelected) {
+      return { border: '2px solid var(--accent-blue)', boxShadow: 'var(--glow-blue)', background: 'rgba(59,130,246,0.08)' };
+    }
+    if (svc.status === 'incident-prone') {
+      return { border: '1px solid rgba(239,68,68,0.5)', background: 'rgba(239,68,68,0.04)' };
+    }
+    if (svc.status === 'at-risk') {
+      return { border: '1px solid rgba(245,158,11,0.4)', background: 'rgba(245,158,11,0.04)' };
+    }
+    return { border: '1px solid var(--border-subtle)', background: 'rgba(255,255,255,0.02)' };
   };
 
   const filteredTier1 = tier1.filter(s => filter === 'all' || s.status === filter);
@@ -53,229 +72,200 @@ export const BlastRadiusCanvas: React.FC<BlastRadiusCanvasProps> = ({
     setShockwaveStage(1);
     setTimeout(() => setShockwaveStage(2), 600);
     setTimeout(() => setShockwaveStage(3), 1300);
-    setTimeout(() => {
-      setShockwaveActive(false);
-      setShockwaveStage(0);
-    }, 4500);
+    setTimeout(() => { setShockwaveActive(false); setShockwaveStage(0); }, 4500);
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-      {/* Canvas Header & Filter Bar */}
-      <div className="px-5 py-3.5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
-        <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-ping" />
-          <h3 className="font-semibold text-slate-800 text-sm">
+    <div className="glass-card overflow-hidden flex flex-col">
+      {/* Canvas Header */}
+      <div className="px-5 py-3.5 flex flex-wrap items-center justify-between gap-3"
+        style={{ borderBottom: '1px solid var(--border-subtle)', background: 'rgba(255,255,255,0.02)' }}>
+        <div className="flex items-center gap-2.5">
+          <div className="relative">
+            <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-blue-400 animate-ping" />
+            <span className="relative w-2 h-2 rounded-full bg-blue-500 inline-block" />
+          </div>
+          <h3 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
             Live Blast Radius Architecture Graph
           </h3>
-          <span className="text-xs bg-slate-200 text-slate-700 font-mono px-2 py-0.5 rounded">
-            Compass & Teamwork Graph Synchronized
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded badge-info">
+            Compass & Teamwork Graph
           </span>
         </div>
 
-        {/* Action Controls */}
-        <div className="flex items-center gap-2">
-          {/* Shockwave Trigger Button */}
+        {/* Controls */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Shockwave */}
           <button
             onClick={triggerShockwave}
             disabled={shockwaveActive}
-            className={`px-3 py-1 rounded-md text-xs font-bold flex items-center gap-1.5 transition shadow-xs ${
-              shockwaveActive
-                ? 'bg-rose-600 text-white animate-pulse'
-                : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition ${
+              shockwaveActive ? 'btn-danger animate-pulse' : 'btn-danger'
             }`}
+            style={!shockwaveActive ? { opacity: 0.85 } : {}}
           >
             <Activity className="w-3.5 h-3.5" />
             {shockwaveActive ? 'Propagating Outage...' : 'Simulate Cascade Shockwave'}
           </button>
 
-          {/* Zoom Controls */}
-          <div className="flex items-center border border-slate-200 rounded-md bg-white">
-            <button
-              onClick={() => setZoomLevel(prev => Math.max(0.75, prev - 0.1))}
-              className="p-1 hover:bg-slate-100 text-slate-600 border-r border-slate-200"
-              title="Zoom Out"
-            >
+          {/* Zoom */}
+          <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+            <button onClick={() => setZoomLevel(p => Math.max(0.75, p - 0.1))} className="btn-ghost p-1.5 border-0 rounded-none">
               <ZoomOut className="w-3.5 h-3.5" />
             </button>
-            <span className="text-[10px] font-mono px-2 text-slate-600 font-bold">
+            <span className="text-[10px] font-mono px-2" style={{ color: 'var(--text-secondary)' }}>
               {Math.round(zoomLevel * 100)}%
             </span>
-            <button
-              onClick={() => setZoomLevel(prev => Math.min(1.25, prev + 0.1))}
-              className="p-1 hover:bg-slate-100 text-slate-600 border-r border-slate-200"
-              title="Zoom In"
-            >
+            <button onClick={() => setZoomLevel(p => Math.min(1.25, p + 0.1))} className="btn-ghost p-1.5 border-0 rounded-none">
               <ZoomIn className="w-3.5 h-3.5" />
             </button>
-            <button
-              onClick={() => setZoomLevel(1)}
-              className="p-1 hover:bg-slate-100 text-slate-600"
-              title="Reset Zoom"
-            >
+            <button onClick={() => setZoomLevel(1)} className="btn-ghost p-1.5 border-0 rounded-none">
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
           </div>
 
           {/* Filters */}
-          <div className="flex items-center gap-1.5 text-xs">
-            <button
-              onClick={() => setFilter('all')}
-              className={`px-2.5 py-1 rounded-md transition ${filter === 'all' ? 'bg-blue-600 text-white font-medium shadow-xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}`}
-            >
-              All ({analysis.impactedServices.length + 1})
-            </button>
-            <button
-              onClick={() => setFilter('incident-prone')}
-              className={`px-2.5 py-1 rounded-md transition ${filter === 'incident-prone' ? 'bg-rose-600 text-white font-medium shadow-xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}`}
-            >
-              P1 Hotspots
-            </button>
+          <div className="flex items-center gap-1 text-xs">
+            {(['all', 'incident-prone'] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className="px-2.5 py-1 rounded-lg font-semibold transition text-[11px]"
+                style={filter === f
+                  ? { background: f === 'all' ? 'var(--accent-blue)' : '#ef4444', color: '#fff' }
+                  : { background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }
+                }
+              >
+                {f === 'all' ? `All (${analysis.impactedServices.length + 1})` : 'P1 Hotspots'}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Main Graph Grid with Zoom Transform */}
-      <div className="p-6 overflow-x-auto min-h-[480px] bg-gradient-to-b from-slate-50/40 via-white to-slate-50/40 relative">
-        
-        {/* Animated Background Flow Indicators */}
-        <div className="absolute inset-0 pointer-events-none opacity-20">
-          <svg width="100%" height="100%">
-            <defs>
-              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#94A3B8" strokeWidth="0.75" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#grid)" />
-          </svg>
-        </div>
+      {/* Graph Area */}
+      <div className="p-6 overflow-x-auto min-h-[480px] relative" style={{ background: 'rgba(8,12,20,0.4)' }}>
+        {/* Grid background */}
+        <div className="absolute inset-0 opacity-30" style={{
+          backgroundImage: 'linear-gradient(rgba(59,130,246,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.08) 1px, transparent 1px)',
+          backgroundSize: '40px 40px'
+        }} />
 
         <div
-          style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left' }}
-          className="min-w-[760px] grid grid-cols-3 gap-8 relative transition-transform duration-300"
+          style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left', transition: 'transform 0.3s ease' }}
+          className="min-w-[800px] grid grid-cols-3 gap-8 relative"
         >
 
-          {/* Tier 0: Root Service (Target of PR / Ticket) */}
+          {/* ── TIER 0: Root Service ── */}
           <div className="flex flex-col items-center">
-            <div className="w-full flex items-center justify-between pb-2 mb-4 border-b border-blue-200">
-              <span className="text-xs font-bold uppercase tracking-wider text-blue-700">Tier 0: Target Service</span>
-              <span className="text-[11px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-mono font-semibold">Change Root</span>
+            <div className="w-full flex items-center justify-between pb-2 mb-4" style={{ borderBottom: '1px solid rgba(59,130,246,0.3)' }}>
+              <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: 'var(--accent-blue)' }}>
+                Tier 0 · Target Service
+              </span>
+              <span className="text-[9px] badge-info px-2 py-0.5 rounded font-mono font-bold">Change Root</span>
             </div>
 
             <div
               onClick={() => onSelectService(root)}
-              className={`w-full relative cursor-pointer rounded-xl border-2 transition-all duration-300 p-4 bg-white shadow-md hover:shadow-lg ${
-                shockwaveStage >= 1
-                  ? 'border-red-600 ring-4 ring-red-400 bg-red-50/40 animate-bounce'
-                  : selectedService?.id === root.id
-                  ? 'border-blue-600 ring-2 ring-blue-100'
-                  : 'border-blue-400 hover:border-blue-500'
-              }`}
+              className="w-full relative cursor-pointer rounded-xl p-4 transition-all duration-300 hover:scale-[1.02]"
+              style={shockwaveStage >= 1
+                ? { border: '2px solid #ef4444', boxShadow: '0 0 32px rgba(239,68,68,0.7)', background: 'rgba(239,68,68,0.1)', transform: 'scale(1.02)' }
+                : selectedService?.id === root.id
+                ? { border: '2px solid var(--accent-blue)', boxShadow: 'var(--glow-blue)', background: 'rgba(59,130,246,0.08)' }
+                : { border: '2px solid rgba(59,130,246,0.4)', background: 'rgba(59,130,246,0.04)' }
+              }
             >
-              {/* Pulsing indicator */}
-              <div className="absolute -top-2 -right-2 flex items-center justify-center">
-                <span className="absolute animate-ping inline-flex h-4 w-4 rounded-full bg-blue-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-600"></span>
+              {/* Live pulse */}
+              <div className="absolute -top-2 -right-2">
+                <span className="absolute animate-ping inline-flex h-4 w-4 rounded-full opacity-75" style={{ background: 'var(--accent-blue)' }} />
+                <span className="relative inline-flex rounded-full h-3 w-3" style={{ background: 'var(--accent-blue)' }} />
               </div>
 
-              <div className="flex items-center gap-2 mb-2">
-                <div className="p-2 rounded-lg bg-blue-50">
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="p-2 rounded-lg" style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)' }}>
                   {getServiceIcon(root.type)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-slate-800 text-sm truncate">{root.name}</h4>
-                  <p className="text-[11px] text-slate-500 font-mono truncate">{root.id}</p>
+                  <h4 className="font-bold text-sm truncate" style={{ color: 'var(--text-primary)' }}>{root.name}</h4>
+                  <p className="text-[10px] font-mono truncate" style={{ color: 'var(--text-muted)' }}>{root.id}</p>
                 </div>
               </div>
 
-              <div className="space-y-1.5 text-xs text-slate-600 mt-3 pt-3 border-t border-slate-100">
+              <div className="space-y-1.5 text-[11px] pt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Team:</span>
-                  <span className="font-medium text-slate-700">{root.ownerTeam}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>Team</span>
+                  <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>{root.ownerTeam}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Compass Score:</span>
-                  <span className="font-bold font-mono text-emerald-600">{root.compassScore}%</span>
+                  <span style={{ color: 'var(--text-muted)' }}>Compass Score</span>
+                  <span className="font-bold font-mono" style={{ color: 'var(--accent-green)' }}>{root.compassScore}%</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">SLA:</span>
-                  <span className="font-mono text-slate-700">{root.sla}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>SLA</span>
+                  <span className="font-mono" style={{ color: 'var(--text-secondary)' }}>{root.sla}</span>
                 </div>
               </div>
 
-              <div className="mt-3 pt-2 flex items-center justify-between text-[11px]">
-                <span className="text-blue-600 font-semibold flex items-center gap-1">
+              <div className="mt-3 pt-2.5 flex items-center justify-between text-[11px]" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                <span className="flex items-center gap-1 font-semibold" style={{ color: 'var(--accent-cyan)' }}>
                   <Zap className="w-3.5 h-3.5" /> 4 Direct Callers
                 </span>
                 <button
                   onClick={(e) => { e.stopPropagation(); onSimulateNode(root.id); }}
-                  className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium"
+                  className="px-2.5 py-1 rounded-lg text-[10px] font-bold btn-ghost"
                 >
-                  Simulate
+                  Simulate ⚡
                 </button>
               </div>
 
               {shockwaveStage >= 1 && (
-                <div className="mt-2 text-center bg-red-600 text-white font-mono text-[10px] py-1 rounded font-bold animate-pulse">
-                  ⚠️ INJECTED FAILURE: 500ms LATENCY
+                <div className="mt-2 text-center font-mono text-[10px] py-1.5 rounded-lg font-black animate-pulse"
+                  style={{ background: 'rgba(239,68,68,0.3)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.5)' }}>
+                  ⚠ INJECTED FAILURE: 500ms LATENCY
                 </div>
               )}
             </div>
 
-            <div className="mt-6 text-center text-xs text-slate-400 max-w-[200px]">
-              Every commit or branch attached to <strong className="text-slate-700 font-mono">{analysis.issueKey}</strong> routes through this node.
+            <div className="mt-4 text-center text-[10px] leading-relaxed" style={{ color: 'var(--text-muted)', maxWidth: '200px' }}>
+              Every commit attached to <span className="font-mono font-bold" style={{ color: 'var(--accent-blue)' }}>{analysis.issueKey}</span> routes through this node.
             </div>
           </div>
 
-          {/* Tier 1: Direct Downstream Consumers */}
+          {/* ── TIER 1: Direct Callers ── */}
           <div className="flex flex-col">
-            <div className="w-full flex items-center justify-between pb-2 mb-4 border-b border-slate-200">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Tier 1: Direct Callers</span>
-              <span className="text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-mono font-semibold">
-                {filteredTier1.length} Services
-              </span>
+            <div className="w-full flex items-center justify-between pb-2 mb-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+              <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Tier 1 · Direct Callers</span>
+              <span className="text-[9px] badge-info px-2 py-0.5 rounded font-mono font-bold">{filteredTier1.length} Services</span>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {filteredTier1.map((svc) => (
                 <div
                   key={svc.id}
                   onClick={() => onSelectService(svc)}
-                  className={`cursor-pointer rounded-lg border transition-all duration-300 p-3 bg-white shadow-xs hover:shadow-md ${
-                    shockwaveStage >= 2 && svc.status === 'incident-prone'
-                      ? 'border-red-600 ring-2 ring-red-300 bg-red-50/60 scale-[1.02]'
-                      : shockwaveStage >= 2
-                      ? 'border-amber-500 ring-2 ring-amber-200 bg-amber-50/40'
-                      : selectedService?.id === svc.id
-                      ? 'border-blue-600 ring-2 ring-blue-100'
-                      : svc.status === 'incident-prone'
-                      ? 'border-rose-300 hover:border-rose-400 bg-rose-50/20'
-                      : svc.status === 'at-risk'
-                      ? 'border-amber-300 hover:border-amber-400 bg-amber-50/20'
-                      : 'border-slate-200 hover:border-slate-300'
-                  }`}
+                  className="cursor-pointer rounded-xl p-3 transition-all duration-300 hover:scale-[1.01]"
+                  style={getNodeBorderStyle(svc, shockwaveStage, 2, selectedService?.id === svc.id)}
                 >
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-2">
                       {getServiceIcon(svc.type)}
-                      <h5 className="font-semibold text-slate-800 text-xs truncate max-w-[150px]">{svc.name}</h5>
+                      <h5 className="font-semibold text-xs truncate max-w-[140px]" style={{ color: 'var(--text-primary)' }}>{svc.name}</h5>
                     </div>
                     {getStatusBadge(svc.status)}
                   </div>
-
-                  <div className="flex items-center justify-between text-[11px] text-slate-500 mt-2 pt-2 border-t border-slate-100">
-                    <span className="font-mono text-slate-600">{svc.ownerTeam}</span>
+                  <div className="flex items-center justify-between text-[10px] mt-2 pt-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                    <span className="font-mono" style={{ color: 'var(--text-muted)' }}>{svc.ownerTeam}</span>
                     {svc.p1IncidentsLast90Days > 0 ? (
-                      <span className="text-rose-600 font-bold flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" /> {svc.p1IncidentsLast90Days} P1 Outages
+                      <span className="font-bold flex items-center gap-1" style={{ color: '#f87171' }}>
+                        <AlertCircle className="w-3 h-3" /> {svc.p1IncidentsLast90Days} P1
                       </span>
                     ) : (
-                      <span className="text-slate-400 font-mono">{svc.sla} SLA</span>
+                      <span className="font-mono" style={{ color: 'var(--text-muted)' }}>{svc.sla}</span>
                     )}
                   </div>
-
                   {shockwaveStage >= 2 && svc.id === 'billing-api' && (
-                    <div className="mt-2 text-[10px] font-mono text-red-700 bg-red-100 px-2 py-0.5 rounded font-bold">
+                    <div className="mt-1.5 text-[9px] font-mono font-black px-2 py-1 rounded"
+                      style={{ background: 'rgba(239,68,68,0.2)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.4)' }}>
                       ⚡ CIRCUIT BREAKER TRIPPED (HTTP 504)
                     </div>
                   )}
@@ -284,39 +274,31 @@ export const BlastRadiusCanvas: React.FC<BlastRadiusCanvasProps> = ({
             </div>
           </div>
 
-          {/* Tier 2: Secondary & Perimeter Dependencies */}
+          {/* ── TIER 2: Perimeter ── */}
           <div className="flex flex-col">
-            <div className="w-full flex items-center justify-between pb-2 mb-4 border-b border-slate-200">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Tier 2: Perimeter & Storage</span>
-              <span className="text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-mono font-semibold">
-                {filteredTier2.length} Services
-              </span>
+            <div className="w-full flex items-center justify-between pb-2 mb-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+              <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Tier 2 · Perimeter & Storage</span>
+              <span className="text-[9px] badge-info px-2 py-0.5 rounded font-mono font-bold">{filteredTier2.length} Services</span>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {filteredTier2.map((svc) => (
                 <div
                   key={svc.id}
                   onClick={() => onSelectService(svc)}
-                  className={`cursor-pointer rounded-lg border transition-all duration-300 p-3 bg-white shadow-xs hover:shadow-md ${
-                    shockwaveStage >= 3
-                      ? 'border-amber-400 bg-amber-50/30'
-                      : selectedService?.id === svc.id
-                      ? 'border-blue-600 ring-2 ring-blue-100'
-                      : 'border-slate-200 hover:border-slate-300'
-                  }`}
+                  className="cursor-pointer rounded-xl p-3 transition-all duration-300 hover:scale-[1.01]"
+                  style={getNodeBorderStyle(svc, shockwaveStage, 3, selectedService?.id === svc.id)}
                 >
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-2">
                       {getServiceIcon(svc.type)}
-                      <h5 className="font-semibold text-slate-800 text-xs truncate max-w-[150px]">{svc.name}</h5>
+                      <h5 className="font-semibold text-xs truncate max-w-[140px]" style={{ color: 'var(--text-primary)' }}>{svc.name}</h5>
                     </div>
                     {getStatusBadge(svc.status)}
                   </div>
-
-                  <div className="flex items-center justify-between text-[11px] text-slate-500 mt-2 pt-2 border-t border-slate-100">
-                    <span className="font-mono text-slate-600">{svc.ownerTeam}</span>
-                    <span className="font-mono text-slate-500">{svc.latencyMs}ms avg</span>
+                  <div className="flex items-center justify-between text-[10px] mt-2 pt-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                    <span className="font-mono" style={{ color: 'var(--text-muted)' }}>{svc.ownerTeam}</span>
+                    <span className="font-mono" style={{ color: 'var(--text-muted)' }}>{svc.latencyMs}ms avg</span>
                   </div>
                 </div>
               ))}
@@ -326,40 +308,40 @@ export const BlastRadiusCanvas: React.FC<BlastRadiusCanvasProps> = ({
         </div>
       </div>
 
-      {/* Selected Node Inspection Drawer */}
+      {/* ── Selected Node Inspector ── */}
       {selectedService && (
-        <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+          style={{ borderTop: '1px solid var(--border-subtle)', background: 'rgba(255,255,255,0.02)' }}>
           <div className="flex items-start gap-3">
-            <div className="p-2.5 rounded-lg bg-white border border-slate-200 shadow-xs">
+            <div className="p-2.5 rounded-xl" style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.25)' }}>
               {getServiceIcon(selectedService.type)}
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h4 className="font-bold text-slate-800 text-sm">{selectedService.name}</h4>
-                <span className="text-xs font-mono bg-slate-200 px-1.5 py-0.5 rounded text-slate-700">{selectedService.id}</span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h4 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{selectedService.name}</h4>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: 'var(--bg-base)', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }}>
+                  {selectedService.id}
+                </span>
                 {getStatusBadge(selectedService.status)}
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Owner Team: <strong className="text-slate-700">{selectedService.ownerTeam}</strong> &bull; Compass Score: <strong className="text-slate-700">{selectedService.compassScore}%</strong> &bull; P1 Incidents: <strong className="text-rose-600">{selectedService.p1IncidentsLast90Days}</strong>
+              <p className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                Team: <strong style={{ color: 'var(--text-secondary)' }}>{selectedService.ownerTeam}</strong>
+                {' · '}Compass: <strong style={{ color: 'var(--accent-green)' }}>{selectedService.compassScore}%</strong>
+                {' · '}P1s: <strong style={{ color: '#f87171' }}>{selectedService.p1IncidentsLast90Days}</strong>
               </p>
               {selectedService.linkedConfluenceDocs.length > 0 ? (
-                <div className="flex items-center gap-2 mt-1.5">
-                  <span className="text-[11px] text-slate-400">Linked Docs:</span>
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Docs:</span>
                   {selectedService.linkedConfluenceDocs.map((doc, idx) => (
-                    <a
-                      key={idx}
-                      href={doc.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[11px] text-blue-600 hover:underline flex items-center gap-1 font-medium bg-blue-50 px-2 py-0.5 rounded border border-blue-100"
-                    >
+                    <a key={idx} href={doc.url} target="_blank" rel="noreferrer"
+                      className="text-[10px] flex items-center gap-1 font-medium px-2 py-0.5 rounded badge-info">
                       {doc.title} <ExternalLink className="w-3 h-3" />
                     </a>
                   ))}
                 </div>
               ) : (
-                <span className="text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 mt-1 inline-block">
-                  ⚠️ No Confluence Runbook linked in Teamwork Graph
+                <span className="text-[10px] mt-1.5 inline-block px-2 py-0.5 rounded badge-high">
+                  ⚠ No Confluence Runbook linked in Teamwork Graph
                 </span>
               )}
             </div>
@@ -368,13 +350,13 @@ export const BlastRadiusCanvas: React.FC<BlastRadiusCanvasProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={() => onSimulateNode(selectedService.id)}
-              className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-medium text-xs flex items-center gap-1.5 shadow-xs transition"
+              className="btn-danger px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5"
             >
-              <Zap className="w-3.5 h-3.5" /> Simulate Node Failure
+              <Zap className="w-3.5 h-3.5" /> Simulate Failure
             </button>
             <button
               onClick={() => onSelectService(root)}
-              className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-medium text-xs transition"
+              className="btn-ghost px-3 py-1.5 rounded-lg text-xs"
             >
               Back to Root
             </button>

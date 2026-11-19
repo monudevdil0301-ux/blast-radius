@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Download, Copy, Check, Printer, X, ShieldAlert } from 'lucide-react';
+import { FileText, Download, Copy, Check, Printer, X, ShieldAlert, Terminal } from 'lucide-react';
 import { BlastRadiusAnalysis } from '../types';
 
 interface ExecutiveReportModalProps {
@@ -80,48 +80,65 @@ ${analysis.recommendedActions.map(rec => `- [x] ${rec}`).join('\n')}
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-3xl w-full max-h-[85vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(4,6,10,0.85)', backdropFilter: 'blur(12px)' }}>
+      <div className="glass-card-elevated max-w-3xl w-full max-h-[85vh] flex flex-col overflow-hidden animate-slide-up"
+        style={{ boxShadow: '0 0 50px rgba(0,0,0,0.8), 0 0 30px rgba(59,130,246,0.2)' }}>
         
         {/* Modal Header */}
-        <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <FileText className="w-5 h-5 text-blue-400" />
+        <div className="px-6 py-4 flex items-center justify-between"
+          style={{ background: 'rgba(8,12,20,0.95)', borderBottom: '1px solid var(--border-subtle)' }}>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', color: 'var(--accent-blue)' }}>
+              <FileText className="w-4 h-4" />
+            </div>
             <div>
-              <h3 className="font-bold text-sm">Executive Architectural Risk Briefing</h3>
-              <p className="text-[11px] text-slate-300">CAB & VP of Engineering Audit Export ({analysis.issueKey})</p>
+              <h3 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
+                Executive Architectural Risk Briefing
+              </h3>
+              <p className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
+                CAB & VP of Engineering Audit Export ({analysis.issueKey})
+              </p>
             </div>
           </div>
           
           <button
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition"
+            className="p-1.5 rounded-lg btn-ghost"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Report Content Preview */}
-        <div className="flex-1 p-6 overflow-y-auto bg-slate-50 font-mono text-xs text-slate-800 space-y-4">
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs whitespace-pre-wrap leading-relaxed">
+        <div className="flex-1 p-6 overflow-y-auto space-y-4"
+          style={{ background: 'rgba(8,12,20,0.6)' }}>
+          <div className="p-5 rounded-xl font-mono text-xs whitespace-pre-wrap leading-relaxed"
+            style={{
+              background: 'rgba(13,21,38,0.8)',
+              border: '1px solid var(--border-subtle)',
+              color: '#93c5fd'
+            }}>
             {reportMarkdown}
           </div>
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-3.5 bg-white border-t border-slate-200 flex items-center justify-between gap-3">
-          <span className="text-[11px] text-slate-500 font-mono">
-            Format: GitHub-Flavored Markdown & Confluence Storage Format
+        <div className="px-6 py-4 flex items-center justify-between gap-3"
+          style={{ background: 'rgba(8,12,20,0.95)', borderTop: '1px solid var(--border-subtle)' }}>
+          <span className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
+            Markdown & Confluence Format
           </span>
 
           <div className="flex items-center gap-2">
             <button
               onClick={handleCopy}
-              className="px-3.5 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-medium text-xs flex items-center gap-1.5 transition"
+              className="btn-ghost px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-1.5"
             >
               {copied ? (
                 <>
-                  <Check className="w-3.5 h-3.5 text-emerald-600" /> Copied!
+                  <Check className="w-3.5 h-3.5 text-emerald-400" /> Copied!
                 </>
               ) : (
                 <>
@@ -132,7 +149,7 @@ ${analysis.recommendedActions.map(rec => `- [x] ${rec}`).join('\n')}
 
             <button
               onClick={handleDownload}
-              className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs flex items-center gap-1.5 shadow-xs transition"
+              className="btn-primary px-4 py-1.5 rounded-xl text-xs flex items-center gap-1.5"
             >
               <Download className="w-3.5 h-3.5" /> Download .MD Report
             </button>
