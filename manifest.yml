@@ -1,4 +1,18 @@
 modules:
+  jira:globalPage:
+    - key: blastradius-global-page
+      title: 'BlastRadius Radar'
+      resource: blastradius-frontend
+      resolver:
+        function: blastradius-resolver
+
+  jira:projectPage:
+    - key: blastradius-project-page
+      title: 'BlastRadius Radar'
+      resource: blastradius-frontend
+      resolver:
+        function: blastradius-resolver
+
   jira:issuePanel:
     - key: blastradius-panel
       title: 'BlastRadius: Impact & Dependency Radar'
