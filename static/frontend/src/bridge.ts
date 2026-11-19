@@ -1,6 +1,24 @@
 import { invoke } from '@forge/bridge';
 import { BlastRadiusAnalysis, SimulationResult } from './types';
 
+/**
+ * Safely calls a Forge backend resolver with immediate standalone fallback
+ * and a 400ms race timeout to prevent hanging when run outside a Forge iframe.
+ */
+async function safeInvoke<T>(functionKey: string, payload?: any, timeoutMs: number = 500): Promise<T> {
+  // If running in a top-level browser tab (e.g. localhost:3000), bypass invoke immediately
+  if (typeof window !== 'undefined' && window.self === window.top) {
+    throw new Error('[ForgeBridge] Standalone mode detected: bypassing invoke()');
+  }
+
+  return Promise.race([
+    invoke<T>(functionKey, payload),
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`[ForgeBridge] invoke('${functionKey}') timed out after ${timeoutMs}ms`)), timeoutMs)
+    )
+  ]);
+}
+
 // Mock presets for different test scenarios
 export const MOCK_ISSUES: Record<string, BlastRadiusAnalysis> = {
   'AUTH-412': {
@@ -243,7 +261,7 @@ export const MOCK_ISSUES: Record<string, BlastRadiusAnalysis> = {
 
 export async function fetchBlastRadiusData(issueKey: string = 'AUTH-412'): Promise<BlastRadiusAnalysis> {
   try {
-    const res = await invoke<BlastRadiusAnalysis>('getBlastRadiusContext', { issueKey });
+    const res = await safeInvoke<BlastRadiusAnalysis>('getBlastRadiusContext', { issueKey });
     if (res && res.riskScore) {
       return res;
     }
@@ -252,19 +270,19 @@ export async function fetchBlastRadiusData(issueKey: string = 'AUTH-412'): Promi
   }
 
   // Fallback to mock preset
-  await new Promise(r => setTimeout(r, 400));
+  await new Promise(r => setTimeout(r, 200));
   return MOCK_ISSUES[issueKey] || MOCK_ISSUES['AUTH-412'];
 }
 
 export async function invokeCreateRegressionSubtasks(issueKey: string, services: string[]) {
   try {
-    const res = await invoke<any>('createRegressionSubtasks', { issueKey, services });
+    const res = await safeInvoke<any>('createRegressionSubtasks', { issueKey, services });
     if (res) return res;
   } catch (err) {
     console.warn('[ForgeBridge] Falling back to mock subtask creation:', err);
   }
 
-  await new Promise(r => setTimeout(r, 600));
+  await new Promise(r => setTimeout(r, 400));
   return {
     success: true,
     parentIssue: issueKey,
@@ -279,13 +297,13 @@ export async function invokeCreateRegressionSubtasks(issueKey: string, services:
 
 export async function invokeCreateRollbackRunbook(issueKey: string, spaceKey: string = 'ENG') {
   try {
-    const res = await invoke<any>('createConfluenceRollbackRunbook', { issueKey, spaceKey });
+    const res = await safeInvoke<any>('createConfluenceRollbackRunbook', { issueKey, spaceKey });
     if (res) return res;
   } catch (err) {
     console.warn('[ForgeBridge] Falling back to mock runbook creation:', err);
   }
 
-  await new Promise(r => setTimeout(r, 700));
+  await new Promise(r => setTimeout(r, 500));
   return {
     success: true,
     pageTitle: `[BlastRadius Playbook] Rollback & Incident Guide for ${issueKey}`,
@@ -297,13 +315,13 @@ export async function invokeCreateRollbackRunbook(issueKey: string, spaceKey: st
 
 export async function invokeSimulateFailure(serviceId: string, failureType: string): Promise<SimulationResult> {
   try {
-    const res = await invoke<SimulationResult>('simulateFailure', { serviceId, failureType });
+    const res = await safeInvoke<SimulationResult>('simulateFailure', { serviceId, failureType });
     if (res) return res;
   } catch (err) {
     console.warn('[ForgeBridge] Falling back to mock failure simulation:', err);
   }
 
-  await new Promise(r => setTimeout(r, 450));
+  await new Promise(r => setTimeout(r, 350));
   const isRoot = serviceId === 'auth-service';
   return {
     simulatedService: serviceId,
@@ -347,13 +365,13 @@ index e44b912..f110c99 100644
 
 export async function invokeScanCodeDiff(issueKey: string, diffText: string = SAMPLE_GIT_DIFF) {
   try {
-    const res = await invoke<any>('scanCodeDiff', { issueKey, diffText });
+    const res = await safeInvoke<any>('scanCodeDiff', { issueKey, diffText });
     if (res) return res;
   } catch (err) {
     console.warn('[ForgeBridge] Falling back to mock diff scan:', err);
   }
 
-  await new Promise(r => setTimeout(r, 600));
+  await new Promise(r => setTimeout(r, 450));
   return {
     issueKey,
     hasBreakingChanges: true,
@@ -385,7 +403,7 @@ export async function invokeScanCodeDiff(issueKey: string, diffText: string = SA
 
 export async function invokeStampReleaseClearance(issueKey: string, gates: string[], riskScore: number) {
   try {
-    const res = await invoke<any>('stampReleaseClearance', {
+    const res = await safeInvoke<any>('stampReleaseClearance', {
       issueKey,
       gates,
       riskScore,
@@ -396,7 +414,7 @@ export async function invokeStampReleaseClearance(issueKey: string, gates: strin
     console.warn('[ForgeBridge] Falling back to mock clearance seal:', err);
   }
 
-  await new Promise(r => setTimeout(r, 650));
+  await new Promise(r => setTimeout(r, 500));
   const sealId = `SEAL-${Date.now().toString(36).toUpperCase()}-${issueKey}`;
   return {
     success: true,
