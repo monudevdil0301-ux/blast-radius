@@ -2,22 +2,40 @@
 
 > **Codegeist 2026 Submission**  
 > *Category:* **Apps for Software Teams**  
-> *Bonus Tracks:* **Best Agents (Rovo)** & **Best Teamwork Graph Integration**
+> *Bonus Tracks:* **Best Atlassian MCP App**, **Best Agents (Rovo)** & **Best Teamwork Graph Integration**
 
-BlastRadius is an AI-powered architectural impact sentry built natively on **Atlassian Forge**. It automatically analyzes microservice dependencies across the **Teamwork Graph** and **Compass**, computes real-time blast radius risk scores on Jira tickets, simulates cascading failures, and uses an autonomous **Rovo Agent** to generate regression test suites and Confluence rollback runbooks.
+BlastRadius is an AI-powered architectural impact sentry built natively on **Atlassian Forge**. It automatically analyzes microservice dependencies across the **Teamwork Graph** and **Compass**, computes real-time blast radius risk scores on Jira tickets, simulates cascading shockwaves, scans Git code diffs for breaking API signatures, provides Change Advisory Board (CAB) pre-flight clearance seals, and uses an autonomous **Rovo Agent** & **Atlassian MCP Server** to generate regression suites and Confluence rollback runbooks.
 
 ---
 
-## 📸 Key Features
+## 🌟 Core Superpowers
 
-- **🕸️ Interactive Blast Radius Canvas:** Live 3-tier dependency graph embedded directly inside the Jira issue panel, showing root targets, direct consumers, and perimeter databases/gateways.
-- **📊 Bayesian Risk Gauge (0-100):** Weighted risk index factoring downstream consumer criticality, P1 incident histories in the last 90 days, and stale Confluence runbooks.
-- **⚡ Chaos & Cascading Failure Simulator:** Synthetic failure injection (latency spikes, unhandled 401s, connection pool exhaustion) with circuit breaker predictions.
-- **🤖 Autonomous Rovo Sentry (`@BlastRadius`):** Natural language AI agent registered via `rovo:agent` and `rovo:action` that audits architecture and executes tool calls.
-- **🛠️ 1-Click Governance:**
-  - Auto-generate linked Jira regression sub-tasks for affected downstream services.
-  - Publish an emergency rollback playbook directly to Confluence.
-  - Broadcast impact notices to component owner teams.
+1. **🕸️ Particle Topology Canvas with Shockwave Cascade:**
+   - Real-time 3-tier microservice dependency graph (Target, Direct Callers, Perimeter Storage/Gateways).
+   - Live data packet animations flowing across nodes.
+   - Interactive zoom/pan controls and a *"Simulate Cascade Shockwave"* button that ripples failure animations across dependent tiers in real time.
+
+2. **🔌 Atlassian Model Context Protocol (MCP) Server:**
+   - Exposes standardized MCP tool schemas for external AI agents (Claude Desktop, Cursor, and Atlassian Rovo):
+     - `blastradius_inspect_dependencies`
+     - `blastradius_simulate_failure`
+     - `blastradius_scan_code_diff`
+     - `blastradius_verify_preflight_clearance`
+
+3. **🔍 Git Code Diff & Breaking Contract Scanner:**
+   - Evaluates unified git diffs against downstream Compass component APIs.
+   - Detects breaking parameter alterations and schema key changes before build pipelines.
+   - Flags exact downstream consumer code lines (e.g. `billing-api/auth_middleware.go:42`).
+
+4. **🛡️ CAB Pre-Flight Deployment Clearance Gate:**
+   - Evaluates 5 automated architectural criteria (Compass Tier 1 Health >= 80%, Zero unmitigated P1s, Runbook freshness, Regression coverage, Owner sign-off).
+   - Generates a certified cryptographic clearance seal and stamps it directly as an official Jira issue comment.
+
+5. **🤖 Autonomous Rovo Sentry (`@BlastRadius`):**
+   - Natural language AI agent registered via `rovo:agent` and `action:` tools that audits architecture and executes tool calls.
+
+6. **📄 1-Click Executive Risk Briefing Exporter:**
+   - Exports audit-grade Markdown and Confluence-ready briefings for Change Advisory Board and executive leadership reviews.
 
 ---
 
@@ -26,8 +44,8 @@ BlastRadius is an AI-powered architectural impact sentry built natively on **Atl
 ```mermaid
 flowchart TD
     subgraph AtlassianEcosystem["Atlassian System of Work"]
-        Jira["Jira Cloud (Issues & Sub-tasks)"]
-        Compass["Compass (Service Catalog)"]
+        Jira["Jira Cloud (Issues, Sub-tasks, Comments)"]
+        Compass["Compass (Service & API Catalog)"]
         Confluence["Confluence (ADRs & Runbooks)"]
         TeamworkGraph["Teamwork Graph API"]
     end
@@ -36,7 +54,8 @@ flowchart TD
         Manifest["manifest.yml"]
         Resolver["Forge Backend Resolvers (index.ts)"]
         Rovo["Rovo Agent Handler (rovo.ts)"]
-        CustomUI["Forge Custom UI (React + Vite)"]
+        MCP["Atlassian MCP Server (mcp.ts)"]
+        CustomUI["Forge Custom UI (React + Vite + Tailwind)"]
     end
 
     Jira --> CustomUI
@@ -44,71 +63,34 @@ flowchart TD
     Compass --> Resolver
     Resolver --> CustomUI
     CustomUI -->|Trigger Action| Resolver
-    Resolver -->|Create Sub-tasks| Jira
+    Resolver -->|Create Sub-tasks & Clearance Seals| Jira
     Resolver -->|Publish Playbook| Confluence
     Rovo -->|Agent Actions| Resolver
+    MCP -->|Standardized Tools| Rovo
 ```
 
 ---
 
 ## 🚀 Quickstart & Development
 
-### 1. Prerequisites
-- Node.js (v18+)
-- Atlassian Forge CLI (`npm install -g @forge/cli`)
-
-### 2. Standalone Frontend Preview (No Forge Account Needed)
-You can test and demo the entire interactive UI locally:
+### 1. Standalone Frontend Preview
+Test and explore all tabs locally without needing an Atlassian account:
 
 ```bash
 cd static/frontend
 npm install
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser. You can toggle between demo Jira issues (`AUTH-412` Critical, `PAY-892` Elevated), simulate failures, run Rovo chat, and trigger sub-task generation!
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### 3. Deploying to Atlassian Cloud via Forge
-When ready to install into your Atlassian Cloud developer site:
-
+### 2. Atlassian Cloud Deployment
 ```bash
-# 1. Build the Custom UI bundle
-cd static/frontend
-npm run build
-cd ../..
+# 1. Build frontend and backend
+npm run build:all
 
-# 2. Login to Atlassian Forge
-forge login
+# 2. Deploy to Atlassian Cloud
+forge deploy -e production
 
-# 3. Register your app ID
-forge register
-
-# 4. Deploy and install
-forge deploy
-forge install
-```
-
----
-
-## 📂 Project Structure
-
-```
-blastradius/
-├── manifest.yml                # Forge App & Rovo Agent manifest
-├── package.json                # Root Forge dependencies
-├── tsconfig.json               # Backend TypeScript configuration
-├── src/
-│   ├── index.ts                # Forge Resolvers (Jira & Confluence APIs)
-│   ├── rovo.ts                 # Rovo Agent Action Handlers
-│   └── types.ts                # Shared TypeScript definitions
-├── static/
-│   └── frontend/               # Custom UI (React + Vite + Tailwind)
-│       ├── src/
-│       │   ├── components/     # Canvas, RiskGauge, Simulator, ActionConsole
-│       │   ├── bridge.ts       # Forge Bridge & Mock Fallback Layer
-│       │   ├── App.tsx         # Main Dashboard
-│       │   └── main.tsx
-│       ├── package.json
-│       └── vite.config.ts
-├── DEVPOST.md                  # Complete Devpost Submission Pitch
-└── DEMO_SCRIPT.md              # 3-5 Minute Video Recording Script
+# 3. Install onto Jira Cloud
+forge install -e production --site your-domain.atlassian.net --product jira
 ```

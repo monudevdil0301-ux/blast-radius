@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Flame, ShieldAlert, Activity, Bot, RefreshCw, Layers, CheckCircle2, ChevronRight, Terminal, Info } from 'lucide-react';
+import { Flame, ShieldAlert, Activity, Bot, RefreshCw, Layers, CheckCircle2, ChevronRight, Terminal, Info, GitPullRequest, ShieldCheck, FileDown } from 'lucide-react';
 import { fetchBlastRadiusData } from './bridge';
 import { BlastRadiusAnalysis, ServiceDependency } from './types';
 import { RiskGauge } from './components/RiskGauge';
@@ -7,14 +7,18 @@ import { BlastRadiusCanvas } from './components/BlastRadiusCanvas';
 import { FailureSimulator } from './components/FailureSimulator';
 import { ActionConsole } from './components/ActionConsole';
 import { RovoChatDrawer } from './components/RovoChatDrawer';
+import { CodeDiffScanner } from './components/CodeDiffScanner';
+import { PreFlightGatePanel } from './components/PreFlightGate';
+import { ExecutiveReportModal } from './components/ExecutiveReportModal';
 
 export function App() {
   const [currentIssue, setCurrentIssue] = useState<string>('AUTH-412');
   const [analysis, setAnalysis] = useState<BlastRadiusAnalysis | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<'graph' | 'chaos' | 'rovo' | 'audit'>('graph');
+  const [activeTab, setActiveTab] = useState<'graph' | 'diff' | 'preflight' | 'chaos' | 'rovo' | 'audit'>('graph');
   const [selectedService, setSelectedService] = useState<ServiceDependency | null>(null);
   const [simTarget, setSimTarget] = useState<string>('auth-service');
+  const [showExecutiveModal, setShowExecutiveModal] = useState<boolean>(false);
 
   const loadData = async (issueKey: string) => {
     setLoading(true);
@@ -64,14 +68,17 @@ export function App() {
                 <span className="text-[10px] font-extrabold uppercase bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full border border-rose-200">
                   Codegeist 2026
                 </span>
+                <span className="text-[10px] font-mono bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-bold">
+                  MCP Ready
+                </span>
               </div>
               <p className="text-[11px] text-slate-500 font-medium">Architectural Impact & Dependency Radar</p>
             </div>
           </div>
 
           {/* Active Jira Issue Selector (Demo Mode) */}
-          <div className="flex items-center gap-3 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
-            <span className="text-[11px] font-semibold text-slate-500 pl-2">Inspecting Issue:</span>
+          <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+            <span className="text-[11px] font-semibold text-slate-500 pl-2">Issue:</span>
             <select
               value={currentIssue}
               onChange={(e) => setCurrentIssue(e.target.value)}
@@ -87,17 +94,39 @@ export function App() {
             >
               <RefreshCw className="w-3.5 h-3.5" />
             </button>
+            <button
+              onClick={() => setShowExecutiveModal(true)}
+              className="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs flex items-center gap-1 transition shadow-xs"
+            >
+              <FileDown className="w-3.5 h-3.5" /> Export Audit
+            </button>
           </div>
 
           {/* Tab Navigation */}
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg text-xs font-medium">
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg text-xs font-medium overflow-x-auto">
             <button
               onClick={() => setActiveTab('graph')}
               className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
                 activeTab === 'graph' ? 'bg-white text-blue-700 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Layers className="w-3.5 h-3.5" /> Dependency Radar
+              <Layers className="w-3.5 h-3.5" /> Radar
+            </button>
+            <button
+              onClick={() => setActiveTab('diff')}
+              className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
+                activeTab === 'diff' ? 'bg-white text-indigo-700 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <GitPullRequest className="w-3.5 h-3.5" /> Diff Scanner
+            </button>
+            <button
+              onClick={() => setActiveTab('preflight')}
+              className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
+                activeTab === 'preflight' ? 'bg-white text-emerald-700 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" /> Pre-Flight CAB
             </button>
             <button
               onClick={() => setActiveTab('chaos')}
@@ -110,7 +139,7 @@ export function App() {
             <button
               onClick={() => setActiveTab('rovo')}
               className={`px-3 py-1.5 rounded-md transition flex items-center gap-1.5 ${
-                activeTab === 'rovo' ? 'bg-white text-indigo-700 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
+                activeTab === 'rovo' ? 'bg-white text-purple-700 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Bot className="w-3.5 h-3.5" /> Rovo Sentry
@@ -173,6 +202,18 @@ export function App() {
           </div>
         )}
 
+        {activeTab === 'diff' && (
+          <div className="space-y-6">
+            <CodeDiffScanner issueKey={analysis.issueKey} />
+          </div>
+        )}
+
+        {activeTab === 'preflight' && (
+          <div className="space-y-6">
+            <PreFlightGatePanel issueKey={analysis.issueKey} riskScore={analysis.riskScore} />
+          </div>
+        )}
+
         {activeTab === 'chaos' && (
           <div className="space-y-6">
             <FailureSimulator initialServiceId={simTarget} />
@@ -192,23 +233,23 @@ export function App() {
             <div className="space-y-4">
               <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
                 <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase mb-2">
-                  <Terminal className="w-4 h-4 text-blue-600" /> Rovo Tooling Manifest
+                  <Terminal className="w-4 h-4 text-blue-600" /> Rovo & MCP Protocol Manifest
                 </div>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  BlastRadius Sentry is registered as a native <code>rovo:agent</code> with three assignable <code>rovo:action</code> tools in Forge:
+                  BlastRadius Sentry is registered both as an assignable <code>rovo:agent</code> and an <strong>Atlassian Model Context Protocol (MCP)</strong> server:
                 </p>
                 <ul className="mt-2.5 space-y-2 text-xs font-mono text-slate-700">
                   <li className="bg-slate-50 p-2 rounded border border-slate-100">
-                    <strong className="text-blue-700">analyze_blast_radius</strong>
-                    <div className="text-[11px] text-slate-500">Traverses Teamwork Graph dependencies</div>
+                    <strong className="text-blue-700">blastradius_inspect_dependencies</strong>
+                    <div className="text-[11px] text-slate-500">MCP tool for multi-tier Graph inspection</div>
                   </li>
                   <li className="bg-slate-50 p-2 rounded border border-slate-100">
-                    <strong className="text-blue-700">generate_regression_tests</strong>
-                    <div className="text-[11px] text-slate-500">Dispatches Jira sub-tasks via REST API</div>
+                    <strong className="text-blue-700">blastradius_simulate_failure</strong>
+                    <div className="text-[11px] text-slate-500">MCP tool for synthetic cascade modeling</div>
                   </li>
                   <li className="bg-slate-50 p-2 rounded border border-slate-100">
-                    <strong className="text-blue-700">draft_rollback_runbook</strong>
-                    <div className="text-[11px] text-slate-500">Creates Confluence markdown playbook</div>
+                    <strong className="text-blue-700">blastradius_verify_preflight_clearance</strong>
+                    <div className="text-[11px] text-slate-500">MCP tool for automated CAB clearance seals</div>
                   </li>
                 </ul>
               </div>
@@ -216,10 +257,10 @@ export function App() {
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs text-blue-900">
                 <div className="flex items-center gap-2 font-bold mb-1">
                   <Info className="w-4 h-4 text-blue-700" />
-                  Codegeist Bonus Track: Best Agents
+                  Codegeist Bonus Tracks Covered
                 </div>
                 <p className="leading-relaxed">
-                  Judges can interact directly with <code>@BlastRadius Sentry</code> in Jira issue comments or Rovo Chat to execute multi-step architectural safety workflows without leaving their discussion context.
+                  Qualifies for <strong>Best Agents</strong> ($1,500), <strong>Best Atlassian MCP App</strong> ($1,500), and <strong>Best Teamwork Graph Integration</strong> ($1,500) simultaneously!
                 </p>
               </div>
             </div>
@@ -230,7 +271,12 @@ export function App() {
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-6">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="font-bold text-slate-900 text-sm">Detailed Risk Factor Breakdown</h3>
-              <span className="text-xs text-slate-500 font-mono">Weighted Bayesian Risk Model</span>
+              <button
+                onClick={() => setShowExecutiveModal(true)}
+                className="px-3 py-1 bg-slate-800 hover:bg-slate-900 text-white font-medium text-xs rounded transition flex items-center gap-1.5"
+              >
+                <FileDown className="w-3.5 h-3.5" /> Open Executive Briefing
+              </button>
             </div>
 
             <div className="space-y-4">
@@ -273,6 +319,14 @@ export function App() {
         )}
 
       </main>
+
+      {/* Executive Report Modal */}
+      {showExecutiveModal && (
+        <ExecutiveReportModal
+          analysis={analysis}
+          onClose={() => setShowExecutiveModal(false)}
+        />
+      )}
     </div>
   );
 }

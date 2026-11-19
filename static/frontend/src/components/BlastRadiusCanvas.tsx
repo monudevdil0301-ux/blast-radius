@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Server, Database, Radio, Globe, Layers, AlertCircle, Shield, ExternalLink, Zap } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Server, Database, Radio, Globe, Layers, AlertCircle, Shield, ExternalLink, Zap, ZoomIn, ZoomOut, RotateCcw, Activity } from 'lucide-react';
 import { ServiceDependency, BlastRadiusAnalysis } from '../types';
 
 interface BlastRadiusCanvasProps {
@@ -16,6 +16,9 @@ export const BlastRadiusCanvas: React.FC<BlastRadiusCanvasProps> = ({
   onSimulateNode
 }) => {
   const [filter, setFilter] = useState<'all' | 'incident-prone' | 'at-risk'>('all');
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [shockwaveActive, setShockwaveActive] = useState<boolean>(false);
+  const [shockwaveStage, setShockwaveStage] = useState<number>(0); // 0: None, 1: Tier 0, 2: Tier 1, 3: Tier 2
 
   const root = analysis.rootService;
   const tier1 = analysis.impactedServices.filter(s => s.tier === 1);
@@ -45,6 +48,17 @@ export const BlastRadiusCanvas: React.FC<BlastRadiusCanvasProps> = ({
   const filteredTier1 = tier1.filter(s => filter === 'all' || s.status === filter);
   const filteredTier2 = tier2.filter(s => filter === 'all' || s.status === filter);
 
+  const triggerShockwave = () => {
+    setShockwaveActive(true);
+    setShockwaveStage(1);
+    setTimeout(() => setShockwaveStage(2), 600);
+    setTimeout(() => setShockwaveStage(3), 1300);
+    setTimeout(() => {
+      setShockwaveActive(false);
+      setShockwaveStage(0);
+    }, 4500);
+  };
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
       {/* Canvas Header & Filter Bar */}
@@ -59,33 +73,87 @@ export const BlastRadiusCanvas: React.FC<BlastRadiusCanvasProps> = ({
           </span>
         </div>
 
-        {/* Filters */}
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-slate-500 font-medium">Filter Nodes:</span>
+        {/* Action Controls */}
+        <div className="flex items-center gap-2">
+          {/* Shockwave Trigger Button */}
           <button
-            onClick={() => setFilter('all')}
-            className={`px-2.5 py-1 rounded-md transition ${filter === 'all' ? 'bg-blue-600 text-white font-medium shadow-xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}`}
+            onClick={triggerShockwave}
+            disabled={shockwaveActive}
+            className={`px-3 py-1 rounded-md text-xs font-bold flex items-center gap-1.5 transition shadow-xs ${
+              shockwaveActive
+                ? 'bg-rose-600 text-white animate-pulse'
+                : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+            }`}
           >
-            All ({analysis.impactedServices.length + 1})
+            <Activity className="w-3.5 h-3.5" />
+            {shockwaveActive ? 'Propagating Outage...' : 'Simulate Cascade Shockwave'}
           </button>
-          <button
-            onClick={() => setFilter('incident-prone')}
-            className={`px-2.5 py-1 rounded-md transition ${filter === 'incident-prone' ? 'bg-rose-600 text-white font-medium shadow-xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}`}
-          >
-            P1 Hotspots
-          </button>
-          <button
-            onClick={() => setFilter('at-risk')}
-            className={`px-2.5 py-1 rounded-md transition ${filter === 'at-risk' ? 'bg-amber-500 text-white font-medium shadow-xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}`}
-          >
-            Missing Docs / High SLA
-          </button>
+
+          {/* Zoom Controls */}
+          <div className="flex items-center border border-slate-200 rounded-md bg-white">
+            <button
+              onClick={() => setZoomLevel(prev => Math.max(0.75, prev - 0.1))}
+              className="p-1 hover:bg-slate-100 text-slate-600 border-r border-slate-200"
+              title="Zoom Out"
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+            </button>
+            <span className="text-[10px] font-mono px-2 text-slate-600 font-bold">
+              {Math.round(zoomLevel * 100)}%
+            </span>
+            <button
+              onClick={() => setZoomLevel(prev => Math.min(1.25, prev + 0.1))}
+              className="p-1 hover:bg-slate-100 text-slate-600 border-r border-slate-200"
+              title="Zoom In"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setZoomLevel(1)}
+              className="p-1 hover:bg-slate-100 text-slate-600"
+              title="Reset Zoom"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Filters */}
+          <div className="flex items-center gap-1.5 text-xs">
+            <button
+              onClick={() => setFilter('all')}
+              className={`px-2.5 py-1 rounded-md transition ${filter === 'all' ? 'bg-blue-600 text-white font-medium shadow-xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}`}
+            >
+              All ({analysis.impactedServices.length + 1})
+            </button>
+            <button
+              onClick={() => setFilter('incident-prone')}
+              className={`px-2.5 py-1 rounded-md transition ${filter === 'incident-prone' ? 'bg-rose-600 text-white font-medium shadow-xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}`}
+            >
+              P1 Hotspots
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Main Graph Grid (Tiers) */}
-      <div className="p-6 overflow-x-auto min-h-[460px] bg-gradient-to-b from-slate-50/40 via-white to-slate-50/40">
-        <div className="min-w-[760px] grid grid-cols-3 gap-8 relative">
+      {/* Main Graph Grid with Zoom Transform */}
+      <div className="p-6 overflow-x-auto min-h-[480px] bg-gradient-to-b from-slate-50/40 via-white to-slate-50/40 relative">
+        
+        {/* Animated Background Flow Indicators */}
+        <div className="absolute inset-0 pointer-events-none opacity-20">
+          <svg width="100%" height="100%">
+            <defs>
+              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#94A3B8" strokeWidth="0.75" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
+        </div>
+
+        <div
+          style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left' }}
+          className="min-w-[760px] grid grid-cols-3 gap-8 relative transition-transform duration-300"
+        >
 
           {/* Tier 0: Root Service (Target of PR / Ticket) */}
           <div className="flex flex-col items-center">
@@ -96,8 +164,10 @@ export const BlastRadiusCanvas: React.FC<BlastRadiusCanvasProps> = ({
 
             <div
               onClick={() => onSelectService(root)}
-              className={`w-full relative cursor-pointer rounded-xl border-2 transition-all p-4 bg-white shadow-md hover:shadow-lg ${
-                selectedService?.id === root.id
+              className={`w-full relative cursor-pointer rounded-xl border-2 transition-all duration-300 p-4 bg-white shadow-md hover:shadow-lg ${
+                shockwaveStage >= 1
+                  ? 'border-red-600 ring-4 ring-red-400 bg-red-50/40 animate-bounce'
+                  : selectedService?.id === root.id
                   ? 'border-blue-600 ring-2 ring-blue-100'
                   : 'border-blue-400 hover:border-blue-500'
               }`}
@@ -144,6 +214,12 @@ export const BlastRadiusCanvas: React.FC<BlastRadiusCanvasProps> = ({
                   Simulate
                 </button>
               </div>
+
+              {shockwaveStage >= 1 && (
+                <div className="mt-2 text-center bg-red-600 text-white font-mono text-[10px] py-1 rounded font-bold animate-pulse">
+                  ⚠️ INJECTED FAILURE: 500ms LATENCY
+                </div>
+              )}
             </div>
 
             <div className="mt-6 text-center text-xs text-slate-400 max-w-[200px]">
@@ -165,8 +241,12 @@ export const BlastRadiusCanvas: React.FC<BlastRadiusCanvasProps> = ({
                 <div
                   key={svc.id}
                   onClick={() => onSelectService(svc)}
-                  className={`cursor-pointer rounded-lg border transition-all p-3 bg-white shadow-xs hover:shadow-md ${
-                    selectedService?.id === svc.id
+                  className={`cursor-pointer rounded-lg border transition-all duration-300 p-3 bg-white shadow-xs hover:shadow-md ${
+                    shockwaveStage >= 2 && svc.status === 'incident-prone'
+                      ? 'border-red-600 ring-2 ring-red-300 bg-red-50/60 scale-[1.02]'
+                      : shockwaveStage >= 2
+                      ? 'border-amber-500 ring-2 ring-amber-200 bg-amber-50/40'
+                      : selectedService?.id === svc.id
                       ? 'border-blue-600 ring-2 ring-blue-100'
                       : svc.status === 'incident-prone'
                       ? 'border-rose-300 hover:border-rose-400 bg-rose-50/20'
@@ -193,6 +273,12 @@ export const BlastRadiusCanvas: React.FC<BlastRadiusCanvasProps> = ({
                       <span className="text-slate-400 font-mono">{svc.sla} SLA</span>
                     )}
                   </div>
+
+                  {shockwaveStage >= 2 && svc.id === 'billing-api' && (
+                    <div className="mt-2 text-[10px] font-mono text-red-700 bg-red-100 px-2 py-0.5 rounded font-bold">
+                      ⚡ CIRCUIT BREAKER TRIPPED (HTTP 504)
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -212,8 +298,10 @@ export const BlastRadiusCanvas: React.FC<BlastRadiusCanvasProps> = ({
                 <div
                   key={svc.id}
                   onClick={() => onSelectService(svc)}
-                  className={`cursor-pointer rounded-lg border transition-all p-3 bg-white shadow-xs hover:shadow-md ${
-                    selectedService?.id === svc.id
+                  className={`cursor-pointer rounded-lg border transition-all duration-300 p-3 bg-white shadow-xs hover:shadow-md ${
+                    shockwaveStage >= 3
+                      ? 'border-amber-400 bg-amber-50/30'
+                      : selectedService?.id === svc.id
                       ? 'border-blue-600 ring-2 ring-blue-100'
                       : 'border-slate-200 hover:border-slate-300'
                   }`}

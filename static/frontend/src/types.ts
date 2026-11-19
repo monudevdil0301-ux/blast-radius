@@ -45,3 +45,39 @@ export interface SimulationResult {
     recommendedMitigation: string;
   };
 }
+
+export interface BreakingChange {
+  file: string;
+  line: number;
+  changeType: string;
+  oldSignature: string;
+  newSignature: string;
+  impactedConsumer: string;
+  impactedConsumerOwner: string;
+  recommendation: string;
+}
+
+export interface CodeDiffScanResult {
+  issueKey: string;
+  hasBreakingChanges: boolean;
+  filesScanned: number;
+  breakingChanges: BreakingChange[];
+}
+
+export interface PreFlightGate {
+  id: string;
+  title: string;
+  category: 'COMPASS' | 'INCIDENT_HISTORY' | 'CONFLUENCE_DOCS' | 'REGRESSION_COVERAGE' | 'OWNER_SIGNOFF';
+  status: 'passed' | 'warning' | 'failed';
+  detail: string;
+  owner: string;
+}
+
+export interface ClearanceSealResult {
+  success: boolean;
+  sealId: string;
+  timestamp: string;
+  issueKey: string;
+  commentText?: string;
+  message: string;
+}
