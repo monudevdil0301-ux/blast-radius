@@ -8,6 +8,16 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Charlie+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+      // Standalone preview polyfill for Atlassian Forge Bridge
+      if (typeof window !== 'undefined' && !window.__bridge) {
+        window.__bridge = {
+          callBridge: function(method, payload) {
+            return Promise.reject(new Error('[ForgeBridge Polyfill] Running in standalone preview mode.'));
+          }
+        };
+      }
+    </script>
   </head>
   <body class="bg-[#080c14] text-[#e8f0ff] antialiased">
     <div id="root"></div>
